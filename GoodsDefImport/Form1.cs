@@ -77,99 +77,7 @@ namespace GoodsDefImport
                         Dictionary<string, string?> rowDict;
                         var recordList = new List<Dictionary<string, string>>();
                         string[] buffer = null;
-                        List<string> barcodeList = new List<string>();
-                        List<string> duplicatedList = new List<string>()
-                        {
-                            "6931875000120",
-                            "6909320002586",
-                            "6925436700321",
-                            "6925212800016",
-                            "6938979800700",
-                            "6935766600123",
-                            "6942729200061",
-                            "6942729200061",
-                            "6942729200061",
-                            "6922131511139",
-                            "6921413254375",
-                            "6900230851707",
-                            "6922043942557",
-                            "6922043942588",
-                            "6931919670425",
-                            "6933386202284",
-                            "6933386202284",
-                            "8809083284220",
-                            "6924671677504",
-                            "6930134700313",
-                            "6936047450017",
-                            "6938979800014",
-                            "6927547200479",
-                            "6932595500013",
-                            "6920384870416",
-                            "6931735700276",
-                            "6904691952027",
-                            "6933386200099",
-                            "6933386200099",
-                            "6933386200099",
-                            "6933386200099",
-                            "6933386236036",
-                            "6933386236036",
-                            "6908791200736",
-                            "8809180012689",
-                            "6941960800016",
-                            "6925212800085",
-                            "6932072300037",
-                            "6931522200163",
-                            "6926831179682",
-                            "6933386202024",
-                            "6933386202055",
-                            "6933386202055",
-                            "6933386202055",
-                            "6933386202055",
-                            "6931841600064",
-                            "6920384896164",
-                            "6931735700177",
-                            "8809145833243",
-                            "6940645965880",
-                            "6936158440037",
-                            "6903071002499",
-                            "6933386200068",
-                            "6933386200068",
-                            "6933386200068",
-                            "6933386200068",
-                            "6923738820587",
-                            "6920742400019",
-                            "6920270512772",
-                            "6932618700956",
-                            "6935755060488",
-                            "6935387768868",
-                            "6924679201657",
-                            "6933386202154",
-                            "6933386202154",
-                            "4935421337304",
-                            "6909246003773",
-                            "6932618700871",
-                            "6920384870263",
-                            "6935420100136",
-                            "6901382911103",
-                            "6942257030017",
-                            "6925212800030",
-                            "6935420100105",
-                            "6904059002388",
-                            "6930391900020",
-                            "6932618766693",
-                            "6935420100143",
-                            "6932088868705",
-                            "6932088868705",
-                            "6932088868705",
-                            "6936601420005",
-                            "6925212800061",
-                            "6938979800175",
-                            "6922043942373",
-                            "5015600000003",
-                            "6939219018015",
-                            "3046000000005",
-                            "6937765222788"
-                        };
+                        var barCodeCheckList = new List<string>();
                         foreach (string line in Lines)
                         {
                             if (i == 0)
@@ -178,7 +86,47 @@ namespace GoodsDefImport
                                 i++;
                                 continue;
                             }
-                            string[] rows = line.Split(',');
+
+                            string[] rows = line.Split(",");
+
+                            if (rows.Length > 12 && buffer == null)
+                            {
+                                //there are "," in the data
+                                List<string> rowList = new List<string>();
+                                bool conn = false;
+                                string connStr = "";
+                                for (int j = 0; j < rows.Length; j++)
+                                {
+                                    if(!conn)
+                                    {
+                                        if (rows[j].StartsWith("\"")
+                                            && !rows[j].EndsWith("\"")
+                                        )
+                                        {
+                                            conn = true;
+                                            connStr = rows[j];
+                                        }
+                                        else
+                                        {
+                                            rowList.Add(rows[j]);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        connStr += rows[j];
+                                        if (!rows[j].StartsWith("\"")
+                                            && rows[j].EndsWith("\"")
+                                        )
+                                        {
+                                            conn = false;
+                                            rowList.Add(connStr);
+                                        }
+                                    }
+                                }
+                                rows = rowList.ToArray();
+                            }
+
+                            //handle line break
                             if (buffer != null)
                             {
                                 rows = buffer.Concat(rows).ToArray();
@@ -190,34 +138,28 @@ namespace GoodsDefImport
                                 XyLog.log(rows[1] + " Only " + rows.Length + " items");
                                 continue;
                             }
-                            for(int itemIndex = 0; itemIndex < rows.Length; itemIndex++)
+
+                            if (barCodeCheckList.Contains(rows[1]))
+                            {
+                                //Skip duplicate record
+                                XyLog.log(rows[1] + " duplicate BarCode");
+                                continue;
+                            }
+                            if(barCodeCheckList.Count > 100)
+                            {
+                                barCodeCheckList.RemoveAt(0);
+                            }
+                            barCodeCheckList.Add(rows[1]);
+
+                            for (int itemIndex = 0; itemIndex < rows.Length; itemIndex++)
                             {
                                 rows[itemIndex] = rows[itemIndex].Replace("\"", "");
                                 rows[itemIndex] = rows[itemIndex].Replace("'", "''"); 
                                 rows[itemIndex] = rows[itemIndex].Trim();
                             }
-                            if(rows[1].Length < 8)
-                            {
-                                XyLog.log(rows[1] + " barcode length less than 8");
-                                continue;
-                            }
-
-                            if(barcodeList.Contains(rows[1]))
-                            {
-                                XyLog.log(rows[1] + " barcode duplicated");
-                                continue;
-                            }
-                            else
-                            {
-                                //if (duplicatedList.Contains(rows[1]))
-                                //{
-                                //    barcodeList.Add(rows[1]);
-                                //}
-                                barcodeList.Add(rows[1]);
-                            }
 
                             rowDict = new Dictionary<string, string?>();
-                            rowDict.Add(GoodsDef.fID, rows[1]);
+                            rowDict.Add(GoodsDef.fID, i.ToString("0000000"));
                             rowDict.Add(GoodsDef.GoodsBarcode, rows[1]);
                             rowDict.Add(GoodsDef.GoodsName, rows[2]);
                             rowDict.Add(GoodsDef.GoodsSpec, rows[3]);
