@@ -37,7 +37,7 @@ namespace xyPOSOrm
                 typeof(string)));
 
             fieldList.Add(new FieldDef(GoodsName, "GoodsName",
-                typeof(string)));
+                typeof(string), 1000));
 
             fieldList.Add(new FieldDef(GoodsSpec, "GoodsSpec",
                 typeof(string)));
@@ -52,7 +52,7 @@ namespace xyPOSOrm
                 typeof(string)));
 
             fieldList.Add(new FieldDef(GoodsSupplier, "GoodsSupplier",
-                typeof(string)));
+                typeof(string), 1000));
 
             fieldList.Add(new FieldDef(GoodsMadeIn, "GoodsMadeIn",
                 typeof(string)));

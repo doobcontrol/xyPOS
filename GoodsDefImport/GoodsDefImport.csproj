@@ -8,4 +8,18 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="xy.Db" Version="1.0.5" />
+    <PackageReference Include="xy.Db.MySql" Version="1.0.5" />
+    <PackageReference Include="xy.Db.PostgreSQL" Version="1.0.5" />
+    <PackageReference Include="xy.Db.SQLite64" Version="1.0.5" />
+    <PackageReference Include="xy.Db.SQLServer" Version="1.0.5" />
+    <PackageReference Include="xy.ORM" Version="1.0.7" />
+    <PackageReference Include="xySoft.log" Version="1.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\xyPOSOrm\xyPOSOrm.csproj" />
+  </ItemGroup>
+
 </Project>
