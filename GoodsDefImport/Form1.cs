@@ -115,6 +115,10 @@ namespace GoodsDefImport
                 {
                     MessageBox.Show("Error reading file: " + ex.Message);
                     XyLog.log(ex);
+                    if(ex.InnerException != null)
+                    {
+                        XyLog.log(ex.InnerException);
+                    }
                 }
                 setWorkingStatus(false);
             }
@@ -153,150 +157,168 @@ namespace GoodsDefImport
             Dictionary<string, int> importMap
             )
         {
-            IEnumerable<string> Lines = File.ReadLines(filePath, 
-                Encoding.GetEncoding(controlPars["Encoding"]));
-            progress.Report(Lines.Count());
-            int startID = 
-                int.Parse((await GoodsDef.i.SelectMax(GoodsDef.fID))??"0")
-                + 1;
-            int i = 0;
-            Dictionary<string, string?> rowDict;
-            var recordList = new List<Dictionary<string, string>>();
-            string[] buffer = null;
-            var barCodeCheckList = new List<string>();
-            int rowLength = int.Parse(controlPars["RowLength"]);
-            int bIndex = importMap[GoodsDef.GoodsBarcode];
-            foreach (string line in Lines)
-            {
-                if (i == 0 && bool.Parse(controlPars["SkipTheHeader"]))
+            await Task.Run(
+                async () =>
                 {
-                    // Skip the header line
-                    i++;
-                    continue;
-                }
-
-                string[] rows = line.Split(controlPars["Split"]);
-
-                if (rows.Length > rowLength && buffer == null)
-                {
-                    //there are "," in the data
-                    List<string> rowList = new List<string>();
-                    bool conn = false;
-                    string connStr = "";
-                    for (int j = 0; j < rows.Length; j++)
+                    IEnumerable<string> Lines = File.ReadLines(filePath,
+                        Encoding.GetEncoding(controlPars["Encoding"]));
+                    progress.Report(Lines.Count());
+                    int startID =
+                        int.Parse((await GoodsDef.i.SelectMax(GoodsDef.fID)) ?? "0")
+                        + 1;
+                    int i = 0;
+                    Dictionary<string, string?> rowDict;
+                    var recordList = new List<Dictionary<string, string>>();
+                    string[] buffer = null;
+                    var barCodeCheckList = new List<string>();
+                    int rowLength = int.Parse(controlPars["RowLength"]);
+                    int bIndex = importMap[GoodsDef.GoodsBarcode];
+                    foreach (string line in Lines)
                     {
-                        if (!conn)
+                        if (i == 0 && bool.Parse(controlPars["SkipTheHeader"]))
                         {
-                            if (rows[j].StartsWith("\"")
-                                && !rows[j].EndsWith("\"")
-                            )
+                            // Skip the header line
+                            i++;
+                            continue;
+                        }
+
+                        string[] rows = line.Split(controlPars["Split"]);
+
+                        if (rows.Length > rowLength && buffer == null)
+                        {
+                            //there are "," in the data
+                            List<string> rowList = new List<string>();
+                            bool conn = false;
+                            string connStr = "";
+                            for (int j = 0; j < rows.Length; j++)
                             {
-                                conn = true;
-                                connStr = rows[j];
+                                if (!conn)
+                                {
+                                    if (rows[j].StartsWith("\"")
+                                        && !rows[j].EndsWith("\"")
+                                    )
+                                    {
+                                        conn = true;
+                                        connStr = rows[j];
+                                    }
+                                    else
+                                    {
+                                        rowList.Add(rows[j]);
+                                    }
+                                }
+                                else
+                                {
+                                    connStr += rows[j];
+                                    if (!rows[j].StartsWith("\"")
+                                        && rows[j].EndsWith("\"")
+                                    )
+                                    {
+                                        conn = false;
+                                        rowList.Add(connStr);
+                                    }
+                                }
+                            }
+                            rows = rowList.ToArray();
+                        }
+
+                        //handle line break
+                        if (buffer != null)
+                        {
+                            rows = buffer.Concat(rows).ToArray();
+                            buffer = null;
+                        }
+                        if (rows.Length < rowLength)
+                        {
+                            buffer = rows;
+                            if (rows.Length - 1 >= bIndex)
+                            {
+                                XyLog.log(rows[bIndex] + " Only " + rows.Length + " items");
                             }
                             else
                             {
-                                rowList.Add(rows[j]);
+                                string tStr = "";
+                                for (int j = 0; j < rows.Length; j++)
+                                {
+                                    tStr += rows[j] + ",";
+                                }
+                                XyLog.log(tStr + " Only " + rows.Length + " items");
                             }
+                            continue;
                         }
-                        else
+
+                        if (barCodeCheckList.Contains(rows[bIndex]))
                         {
-                            connStr += rows[j];
-                            if (!rows[j].StartsWith("\"")
-                                && rows[j].EndsWith("\"")
-                            )
+                            //Skip duplicate record
+                            XyLog.log(rows[bIndex] + " duplicate BarCode");
+                            continue;
+                        }
+                        if (barCodeCheckList.Count > 100)
+                        {
+                            barCodeCheckList.RemoveAt(0);
+                        }
+                        barCodeCheckList.Add(rows[bIndex]);
+
+                        for (int itemIndex = 0; itemIndex < rows.Length; itemIndex++)
+                        {
+                            rows[itemIndex] = rows[itemIndex].Replace("\"", "");
+                            rows[itemIndex] = rows[itemIndex].Replace("'", "''");
+                            rows[itemIndex] = rows[itemIndex].Replace("\0", "");
+                            rows[itemIndex] = rows[itemIndex].Trim();
+                        }
+
+                        rowDict = new Dictionary<string, string?>();
+                        rowDict.Add(GoodsDef.fID, (i + startID).ToString("000000000"));
+                        foreach (var item in importMap)
+                        {
+                            string k = item.Key;
+                            int v = item.Value;
+                            if (k == GoodsDef.GoodsPrice)
                             {
-                                conn = false;
-                                rowList.Add(connStr);
+                                rows[v] = getFloatString(rows[v]);
+                            }
+                            if (rows[v] != "" && rows[v] != "NULL")
+                            {
+                                rowDict.Add(k, rows[v]);
+                            }
+                            else
+                            {
+                                rowDict.Add(k, null);
                             }
                         }
-                    }
-                    rows = rowList.ToArray();
-                }
+                        recordList.Add(rowDict);
 
-                //handle line break
-                if (buffer != null)
-                {
-                    rows = buffer.Concat(rows).ToArray();
-                    buffer = null;
-                }
-                if (rows.Length < rowLength)
-                {
-                    buffer = rows;
-                    if (rows.Length - 1 >= bIndex)
-                    {
-                        XyLog.log(rows[bIndex] + " Only " + rows.Length + " items");
-                    }
-                    else
-                    {
-                        string tStr = "";
-                        for (int j = 0; j < rows.Length; j++)
+                        i++;
+                        if (recordList.Count >= 1000)
                         {
-                            tStr += rows[j] + ",";
+                            try
+                            {
+                                await GoodsDef.i.Insert(recordList);
+                            }
+                            catch (Exception ex)
+                            {
+                                XyLog.log(ex);
+                                if (ex.InnerException != null)
+                                {
+                                    XyLog.log(ex.InnerException);
+                                }
+                            }
+                            //await GoodsDef.i.Insert(recordList);
+                            recordList.Clear();
+                            if (canecel)
+                            {
+                                break;
+                            }
+                            progress.Report(i);
                         }
-                        XyLog.log(tStr + " Only " + rows.Length + " items");
                     }
-                    continue;
-                }
-
-                if (barCodeCheckList.Contains(rows[bIndex]))
-                {
-                    //Skip duplicate record
-                    XyLog.log(rows[bIndex] + " duplicate BarCode");
-                    continue;
-                }
-                if (barCodeCheckList.Count > 100)
-                {
-                    barCodeCheckList.RemoveAt(0);
-                }
-                barCodeCheckList.Add(rows[bIndex]);
-
-                for (int itemIndex = 0; itemIndex < rows.Length; itemIndex++)
-                {
-                    rows[itemIndex] = rows[itemIndex].Replace("\"", "");
-                    rows[itemIndex] = rows[itemIndex].Replace("'", "''");
-                    rows[itemIndex] = rows[itemIndex].Trim();
-                }
-
-                rowDict = new Dictionary<string, string?>();
-                rowDict.Add(GoodsDef.fID, (i+ startID).ToString("000000000"));
-                foreach(var item in importMap)
-                {
-                    string k = item.Key;
-                    int v = item.Value;
-                    if (k == GoodsDef.GoodsPrice)
+                    if (recordList.Count >= 0)
                     {
-                        rows[v] = getFloatString(rows[v]);
+                        await GoodsDef.i.Insert(recordList);
+                        progress.Report(i);
                     }
-                    if (rows[v] != "" && rows[v] != "NULL")
-                    {
-                        rowDict.Add(k, rows[v]);
-                    }
-                    else
-                    {
-                        rowDict.Add(k, null);
-                    }
+                    XyLog.log("Importing " + i + " records");
                 }
-                recordList.Add(rowDict);
-
-                i++;
-                if (recordList.Count >= 1000)
-                {
-                    await GoodsDef.i.Insert(recordList);
-                    recordList.Clear();
-                    if (canecel)
-                    {
-                        break;
-                    }
-                    progress.Report(i);
-                }
-            }
-            if (recordList.Count >= 0)
-            {
-                await GoodsDef.i.Insert(recordList);
-                progress.Report(i);
-            }
-            XyLog.log("Importing " + i + " records");
+                );
         }
         private string getFloatString(string oStr)
         {

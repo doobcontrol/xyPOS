@@ -1,3 +1,4 @@
+using System.Text;
 using TestBench;
 using xy.ORM;
 using xyPOSOrm;
@@ -15,6 +16,8 @@ namespace GoodsDefImport
             // To customize application configuration such as set high DPI settings or default font,
             // see https://aka.ms/applicationconfiguration.
             ApplicationConfiguration.Initialize();
+
+            System.Text.Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
             //add all models to model list
             BaseModel.addToModelList(typeof(GoodsDef));
