@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace xyDbSample
 {
-    class xyCfg
+    public class xyCfg
     {
         private xyCfg()
         {
