@@ -163,8 +163,11 @@ namespace GoodsDefImport
                     IEnumerable<string> Lines = File.ReadLines(filePath,
                         Encoding.GetEncoding(controlPars["Encoding"]));
                     progress.Report(Lines.Count());
+                    string maxID = await GoodsDef.i.SelectMax(GoodsDef.fID);
                     int startID =
-                        int.Parse((await GoodsDef.i.SelectMax(GoodsDef.fID)) ?? "0")
+                        int.Parse(
+                            maxID == "" ? "0": maxID
+                            ?? "0")
                         + 1;
                     int i = 0;
                     Dictionary<string, string?> rowDict;
