@@ -14,7 +14,7 @@
     <PackageReference Include="xy.Db.PostgreSQL" Version="1.0.5" />
     <PackageReference Include="xy.Db.SQLite64" Version="1.0.5" />
     <PackageReference Include="xy.Db.SQLServer" Version="1.0.5" />
-    <PackageReference Include="xy.ORM" Version="1.0.9" />
+    <PackageReference Include="xy.ORM" Version="1.0.10" />
     <PackageReference Include="xySoft.log" Version="1.0.1" />
   </ItemGroup>
 

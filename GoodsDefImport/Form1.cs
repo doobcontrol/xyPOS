@@ -263,6 +263,7 @@ namespace GoodsDefImport
                             rows[itemIndex] = rows[itemIndex].Replace("\"", "");
                             rows[itemIndex] = rows[itemIndex].Replace("'", "''");
                             rows[itemIndex] = rows[itemIndex].Replace("\0", "");
+                            rows[itemIndex] = rows[itemIndex].Replace("\\", "/");
                             rows[itemIndex] = rows[itemIndex].Trim();
                         }
 
@@ -302,7 +303,6 @@ namespace GoodsDefImport
                                     XyLog.log(ex.InnerException);
                                 }
                             }
-                            //await GoodsDef.i.Insert(recordList);
                             recordList.Clear();
                             if (canecel)
                             {
@@ -316,7 +316,8 @@ namespace GoodsDefImport
                         await GoodsDef.i.Insert(recordList);
                         progress.Report(i);
                     }
-                    XyLog.log("Importing " + i + " records");
+                    XyLog.log("Imported " + i + " records");
+                    MessageBox.Show("Imported " + i + " records");
                 }
                 );
         }
